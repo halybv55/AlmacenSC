@@ -12,7 +12,7 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // =======================================
-// 🔥 BASE DE DATOS
+// 🔥 BASE DE DATOS (SOLO RAILWAY)
 // =======================================
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 builder.Services.AddDbContext<AlmacenSCContext>(options =>
@@ -29,7 +29,7 @@ builder.Services.AddScoped<ICargaProductoDetalleRepository, CargaProductoDetalle
 builder.Services.AddScoped<IAlertaReabastecimientoRepository, AlertaReabastecimientoRepository>();
 
 // =======================================
-// 🔥 CONTROLLERS + JSON CYCLES FIX
+// 🔥 CONTROLLERS
 // =======================================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -44,18 +44,20 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// =======================================
-// 🔥 MIDDLEWARE
-// =======================================
-
 app.UseSwagger();
 app.UseSwaggerUI();
-
-// ❌ IMPORTANTE: NO HTTPS EN RAILWAY
-// app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+// =======================================
+// 🔥 MIGRACIONES AUTOMÁTICAS EN RAILWAY
+// =======================================
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AlmacenSCContext>();
+    db.Database.Migrate();  // CREA TODAS LAS TABLAS EN TU POSTGRES DE RAILWAY
+}
 
 app.Run();
