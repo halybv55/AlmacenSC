@@ -15,12 +15,15 @@ builder.Services.AddDbContext<AlmacenSCContext>(options =>
 
 builder.WebHost.UseUrls("http://0.0.0.0.8080");
 
-
-
-
-
-
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsLibre", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 
 
 // =======================================
@@ -51,6 +54,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("CorsLibre");
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
