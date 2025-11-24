@@ -2,16 +2,18 @@
 using AlmacenSC.Data;
 using AlmacenSC.Infraestructura.Repositorios;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================================
+// 🔥 PUERTO PARA RAILWAY (OBLIGATORIO)
+// =======================================
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+// =======================================
 // 🔥 BASE DE DATOS (Railway o Local)
 // =======================================
-// Si existe DATABASE_URL → usar Railway
-// Si no existe → usar appsettings.json (local)
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
                       ?? builder.Configuration.GetConnectionString("AlmacenSCContext");
 
@@ -45,22 +47,28 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // =======================================
-// 🔥 MIDDLEWARE
+// 🔥 SWAGGER EN Railway + Local
 // =======================================
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    // Railway NO usa HTTPS
-    // NUNCA activar HttpsRedirection en producción
-}
+// Railway = Producción → SÍ queremos Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection(); // Esto solo aplica en desarrollo
+// =======================================
+// 🚫 NO HTTPS EN RAILWAY
+// =======================================
+//app.UseHttpsRedirection();
+
 app.UseAuthorization();
 
 app.MapControllers();
+
+// =======================================
+// 🔥 MIGRACIONES AUTOMÁTICAS EN RAILWAY
+// =======================================
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AlmacenSCContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
