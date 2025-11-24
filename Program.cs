@@ -6,7 +6,13 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================================
-// 🔥 BASE DE DATOS (Railway → DATABASE_URL)
+// 🔥 PUERTO PARA RAILWAY
+// =======================================
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+// =======================================
+// 🔥 BASE DE DATOS (Railway o Local)
 // =======================================
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
                       ?? builder.Configuration.GetConnectionString("AlmacenSCContext");
@@ -25,7 +31,7 @@ builder.Services.AddScoped<ICargaProductoDetalleRepository, CargaProductoDetalle
 builder.Services.AddScoped<IAlertaReabastecimientoRepository, AlertaReabastecimientoRepository>();
 
 // =======================================
-// 🔥 CONTROLLERS + JSON FIX
+// 🔥 CONTROLLERS
 // =======================================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -41,16 +47,21 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // =======================================
-// 🔥 SWAGGER SIEMPRE EN RAILWAY
+// 🔥 SWAGGER SIEMPRE ACTIVO EN RAILWAY
 // =======================================
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ❌ NO uses HTTPS EN RAILWAY
-// app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
+
+// =======================================
+// 🔥 MIGRACIONES AUTOMÁTICAS (CLAVE PARA CREAR TABLAS)
+// =======================================
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AlmacenSCContext>();
+    db.Database.Migrate();   // 👈 CREA LAS TABLAS EN RAILWAY
+}
 
 app.Run();
