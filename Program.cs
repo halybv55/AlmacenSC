@@ -2,19 +2,19 @@
 using AlmacenSC.Data;
 using AlmacenSC.Infraestructura.Repositorios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================================
-// 🔥 PUERTO PARA RAILWAY
+// 🔥 BASE DE DATOS (Railway o Local)
 // =======================================
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+// Si existe DATABASE_URL → usar Railway
+// Si no existe → usar appsettings.json (local)
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+                      ?? builder.Configuration.GetConnectionString("AlmacenSCContext");
 
-// =======================================
-// 🔥 BASE DE DATOS (SOLO RAILWAY)
-// =======================================
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 builder.Services.AddDbContext<AlmacenSCContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -29,7 +29,7 @@ builder.Services.AddScoped<ICargaProductoDetalleRepository, CargaProductoDetalle
 builder.Services.AddScoped<IAlertaReabastecimientoRepository, AlertaReabastecimientoRepository>();
 
 // =======================================
-// 🔥 CONTROLLERS
+// 🔥 CONTROLLERS + JSON CYCLES FIX
 // =======================================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -44,20 +44,23 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+// =======================================
+// 🔥 MIDDLEWARE
+// =======================================
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
+    // Railway NO usa HTTPS
+    // NUNCA activar HttpsRedirection en producción
+}
 
+app.UseHttpsRedirection(); // Esto solo aplica en desarrollo
 app.UseAuthorization();
 
 app.MapControllers();
-
-// =======================================
-// 🔥 MIGRACIONES AUTOMÁTICAS EN RAILWAY
-// =======================================
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AlmacenSCContext>();
-    db.Database.Migrate();  // CREA TODAS LAS TABLAS EN TU POSTGRES DE RAILWAY
-}
 
 app.Run();
