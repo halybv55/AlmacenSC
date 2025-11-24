@@ -1,67 +1,58 @@
-﻿using AlmacenSC.Core.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using AlmacenSC.Data;
+using AlmacenSC.Core.Interfaces;
 using AlmacenSC.Infraestructura.Repositorios;
-using Microsoft.EntityFrameworkCore;
+
+
+
+var url = Environment.GetEnvironmentVariable("DATABASE");
+Console.WriteLine($"La cadena de coneccion esta: {url}");
 
 var builder = WebApplication.CreateBuilder(args);
-
-// =======================================
-// 🔥 PUERTO PARA RAILWAY
-// =======================================
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
-// =======================================
-// 🔥 BASE DE DATOS (Railway o Local)
-// =======================================
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-                      ?? builder.Configuration.GetConnectionString("AlmacenSCContext");
-
 builder.Services.AddDbContext<AlmacenSCContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(url));
+
+builder.WebHost.UseUrls("http://0.0.0.0.8080");
+
+
+
+
+
+
+
+
 
 // =======================================
-// 🔥 REGISTRO DE REPOSITORIOS
+// 🔥 REGISTRO DE REPOSITORIOS (IMPORTANTE)
 // =======================================
 builder.Services.AddScoped<IProductoEntradaRepository, ProductoEntradaRepository>();
 builder.Services.AddScoped<IProductoSalidaRepository, ProductoSalidaRepository>();
 builder.Services.AddScoped<IInventarioRepository, InventarioRepository>();
 builder.Services.AddScoped<ICargaProductoRepository, CargaProductoRepository>();
 builder.Services.AddScoped<ICargaProductoDetalleRepository, CargaProductoDetalleRepository>();
-builder.Services.AddScoped<IAlertaReabastecimientoRepository, AlertaReabastecimientoRepository>();
-
+// agrega aquí cualquier otro repositorio que tengas
 // =======================================
-// 🔥 CONTROLLERS
-// =======================================
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.ReferenceHandler =
-            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-        options.JsonSerializerOptions.WriteIndented = true;
-    });
 
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-
-// =======================================
-// 🔥 SWAGGER SIEMPRE ACTIVO EN RAILWAY
-// =======================================
-app.UseSwagger();
-app.UseSwaggerUI();
-
-app.UseAuthorization();
-app.MapControllers();
-
-// =======================================
-// 🔥 MIGRACIONES AUTOMÁTICAS (CLAVE PARA CREAR TABLAS)
-// =======================================
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AlmacenSCContext>();
-    db.Database.Migrate();   // 👈 CREA LAS TABLAS EN RAILWAY
+    var dbContext = scope.ServiceProvider.GetRequiredService<AlmacenSCContext>();
+    dbContext.Database.Migrate();
 }
 
+// Configure HTTP pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
 app.Run();
