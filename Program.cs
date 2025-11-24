@@ -1,19 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using AlmacenSC.Core.Interfaces;
 using AlmacenSC.Data;
-using AlmacenSC.Core.Interfaces;
 using AlmacenSC.Infraestructura.Repositorios;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================================
 // 🔥 BASE DE DATOS
 // =======================================
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 builder.Services.AddDbContext<AlmacenSCContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("AlmacenSCContext")
-        ?? throw new InvalidOperationException("Connection string 'AlmacenSCContext' not found.")
-    ));
+    options.UseNpgsql(connectionString));
+
 
 
 // =======================================
